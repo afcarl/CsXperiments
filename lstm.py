@@ -3,7 +3,6 @@ import numpy as np
 from csxnet.brainforge.layers import _FCLayer
 from csxnet.util import white
 from csxnet.brainforge.activations import Sigmoid, Tanh
-from csxdata.utilities.containers import Pipeline
 
 sigmoid, tanh = Sigmoid(), Tanh()
 
@@ -18,50 +17,52 @@ class LSTM(_FCLayer):
         # These are all input weights, we are not using the previous output!!
         # Idk whether this is a problem tho
 
-        Wf = white(Z, neurons)
-        Wi = white(Z, neurons)
-        Wc = white(Z, neurons)
-        Wo = white(Z, neurons)
-
-        bf = np.zeros(1, neurons)
-        bi = np.zeros(1, neurons)
-        bc = np.zeros(1, neurons)
-        bo = np.zeros(1, neurons)
-
-        self.weights = np.column_stack((Wf, Wi, Wc, Wo))
-        self.biases = np.column_stack((bf, bi, bc, bo))
+        self.weights = white(Z, neurons*4)
+        self.biases = white(1, neurons*4)
 
         self.gate_W_gradients = np.zeros_like(self.weights)
         self.gate_b_gradients = np.zeros_like(self.biases)
 
         self.states = []
-        self.cache = None
+        self.outputs = []
+        self.caches = []
 
         self.time = 0
         self.fanin = inputs
 
     def feedforward(self, stimuli: np.ndarray):
+        self.outputs = []
+        self.states = [np.zeros((self.brain.m, self.neurons))]
+        self.caches = []
+        self.time = stimuli.shape[1]
+        self.inputs = stimuli
+        # this step might be neccesary if the first datadim is not time, but the batch index
+        # stimuli = np.transpose(stimuli, (1, 0, 2))
+
+        n = self.neurons
+
         def timestep(t):
+            # Sizes:        (bsize, embed)  (1, neurons)
+            X = np.column_stack((stimuli[t], self.outputs[-1]))
             gates = X.dot(self.weights) + self.biases
             gates[:, :n * 3] = sigmoid(gates[:, n * 3])
             gates[:, 3 * n:] = tanh(gates[:, 3 * n:])
+            # This is basically a slicing step
             gf, gi, cand, go = np.transpose(gates.reshape(self.fanin, 4, self.neurons), axes=(1, 0, 2))
             self.states.append(gf * self.states[-1] + gi * cand)
-            self.output[t] = go * tanh(self.states[-1])
+            self.outputs.append(go * tanh(self.states[-1]))
+            self.caches.append((gf, gi, cand, go))
 
-        self.time = stimuli.shape[1]
-        self.inputs = stimuli
-        self.output = np.zeros((self.brain.m, self.neurons))
-        X = np.transpose(stimuli, (1, 0, 2))
+        for time in range(self.time):
+            timestep(time)
 
-        n = self.neurons
-        gates = X.dot(self.weights) + self.biases
-        gates[:, :n*3] = sigmoid(gates[:, n*3])
-        gates[:, 3 * n:] = tanh(gates[:, 3 * n:])
-        gf, gi, cand, go = np.transpose(gates.reshape(self.fanin, 4, self.neurons), axes=(1, 0, 2))
-
-        self.output = go * tanh(self.state.top)
-        self.cache = gf, gi, cand, go
+        # gates = X.dot(self.weights) + self.biases
+        # gates[:, :n*3] = sigmoid(gates[:, n*3])
+        # gates[:, 3 * n:] = tanh(gates[:, 3 * n:])
+        # gf, gi, cand, go = np.transpose(gates.reshape(self.fanin, 4, self.neurons), axes=(1, 0, 2))
+        #
+        # self.output = go * tanh(self.state.top)
+        # self.cache = gf, gi, cand, go
 
     def weight_update(self):
         # Update weights and biases
@@ -71,29 +72,30 @@ class LSTM(_FCLayer):
                     out=self.biases)
 
     def backpropagation(self):
-        gf, gi, cand, go = self.cache
-
         error_now = self.error
         error_tomorrow = np.zeros_like(self.error)
         gate_errors = np.zeros((self.brain.m, self.neurons * 4))
-        dstate = np.zeros_like(self.state.top)
+        dstate = np.zeros_like(self.states[0])
 
         # No momentum (yet)
         self.gate_W_gradients = np.zeros_like(self.weights)
         self.gate_b_gradients = np.zeros_like(self.biases)
 
         # backprop through time
-        for _ in range(0, self.time, -1):
+        for t in range(0, self.time, -1):
+            gf, gi, cand, go = self.caches[t]
             error_now += error_tomorrow
-            dgo = sigmoid.derivative(tanh(self.state.top) * error_now)
-            dstate = tanh.derivative(self.state.top) * (go * error_now + dstate)
-            dgf = sigmoid.derivative(gf) * (self.state.bottom * dstate)
+            dgo = sigmoid.derivative(tanh(self.states[t]) * error_now)
+            dstate = tanh.derivative(self.states[t]) * (go * error_now + dstate)
+            dgf = sigmoid.derivative(gf) * (self.states[t-1] * dstate)
             dgi = sigmoid.derivative(gi) * (cand * dstate)
             dcand = tanh.derivative(cand) * (gi * dstate)
 
             gate_errors = np.concatenate((dgf, dgi, dcand, dgo))
             self.gate_W_gradients += self.inputs.T.dot(gate_errors)
             self.gate_b_gradients += gate_errors
+            # Folding the (fanin, 4*neurons) part into (4, neurons)
+            # then summing the 4 matrices into 1 and getting (fanin, neurons)
             error_tomorrow = np.transpose(gate_errors.reshape(self.fanin, 4, self.neurons), axes=(1, 0, 2)
                                           ).sum(axis=0)
             dstate = gf * dstate
