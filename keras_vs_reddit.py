@@ -1,5 +1,5 @@
-from csxnet.data import Sequence
-from csxnet.utilities.pure import roots
+from csxdata import Sequence, roots
+
 
 vocabulary_size = 8000
 unknown_token = "<UNK>"
