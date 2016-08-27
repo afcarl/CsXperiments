@@ -7,9 +7,9 @@ from csxdata.utilities.helpers import speak_to_me
 
 
 # params:
-NGRAM = 2
+NGRAM = 1
 SAMPLE_NO_NGRAMS = 50
-TIMESTEP = 8
+TIMESTEP = 15
 CROSSVAL = 0.0
 
 PRETRAIN = RMSprop
@@ -19,7 +19,7 @@ FINETUNE_LR = 0.01
 
 
 def pull_data(crossval):
-    return Sequence(roots["txt"] + "petofi.txt", embeddim=None, cross_val=crossval, timestep=TIMESTEP, n_gram=NGRAM)
+    return Sequence(roots["txt"] + "books.txt", embeddim=None, cross_val=crossval, timestep=TIMESTEP, n_gram=NGRAM)
 
 
 def get_net(inshape, outputs):
