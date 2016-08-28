@@ -47,7 +47,7 @@ def xperiment():
         unbroken = True
         for decade in range(1, decades+1):
             try:
-                model.fit(X, y, nb_epoch=10, validation_data=val)
+                model.fit_generator(lesson_generator, samples_per_epoch=32, nb_epoch=10, validation_data=val)
             except KeyboardInterrupt:
                 unbroken = False
             spoken.append("RMSprop pretrain epoch {}: {}".format(decade * 10, speak_to_me(model, petofi)))
@@ -62,7 +62,7 @@ def xperiment():
         unbroken = True
         for decade in range(1, decades+1):
             try:
-                model.fit(X, y, nb_epoch=10, validation_data=val)
+                model.fit_generator(lesson_generator, samples_per_epoch=32, nb_epoch=10, validation_data=val)
             except KeyboardInterrupt:
                 unbroken = False
             spoken.append("SGD finetune epoch {}: {}".format(10 * decade, speak_to_me(model, petofi)))
@@ -80,8 +80,8 @@ def xperiment():
 
     model, petofi = create_network_and_data(crossval=CROSSVAL)
 
-    X, y = petofi.table("learning")
-    val = petofi.table("testing")
+    lesson_generator = petofi.batchgen(32)
+    val = None, None
     spoken = [sample()]
 
     pretrain_decade(20)
@@ -94,6 +94,7 @@ def xperiment():
 
     longsample = "\n".join(sample() for _ in range(20))
     print("\n" + "-" * 50 + "Long sample:\n" + longsample)
+
 
 if __name__ == '__main__':
     xperiment()
