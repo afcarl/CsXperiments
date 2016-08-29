@@ -1,8 +1,8 @@
 from keras.models import Sequential
 from keras.layers import Dense
 
-from csxnet.data import CData
-from csxnet.utilities.pure import roots
+from csxdata import CData
+from csxdata import roots
 
 
 def pull_data(path):
@@ -20,7 +20,7 @@ def build_model():
     model.add(Dense(input_dim=3600, output_dim=30))
 
 pics = pull_data(roots["lt"] + "xonezero_bgs.pkl.gz")
-pics.self_standardize()
+pics.transformation = "std"
 
 X, y = pics.table("learning")
 

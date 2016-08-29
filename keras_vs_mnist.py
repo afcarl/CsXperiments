@@ -1,8 +1,8 @@
 from keras.models import Sequential
 from keras.layers.core import Dense
 
-from csxnet.data import mnist_to_lt, CData
-from csxnet.utilities.pure import roots
+from csxdata import CData, roots
+from csxdata.utilities.parsers import mnist_tolearningtable as mnist_to_lt
 
 miscpath = roots["misc"] + "mnist.pkl.gz"
 
@@ -44,7 +44,7 @@ def experiment(mode):
     print("Experiment: MNIST classification with {} Neural Network!".format(chain))
     net = get_fcnn() if mode == "f" else get_cnn()
     mnist = CData(mnist_to_lt(miscpath, (True if mode == "c" else False)))
-    mnist.self_standardize()
+    mnist.transformation = "standardization"
 
     net.fit(mnist.data, mnist.indeps, batch_size=20, nb_epoch=30, verbose=1,
             validation_split=0.2, show_accuracy=True)

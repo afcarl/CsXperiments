@@ -94,7 +94,7 @@ for iteration in range(1, 60):
 
             preds = model.predict(x, verbose=0)[0]
             next_index = sample(preds, diversity)
-            next_char = indices_char[next_index]
+            next_char = indices_char[int(next_index)]
 
             generated += next_char
             sentence = sentence[1:] + next_char

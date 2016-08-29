@@ -1,11 +1,10 @@
 import time
 
-from csxnet.utilities.pure import roots
-from csxnet.data import CData, mnist_to_lt
+from csxdata import CData, roots
+from csxdata.utilities.parsers import mnist_tolearningtable as mnist_to_lt
 
 datapath = roots["misc"] + "mnist.pkl.gz"
-data = CData(mnist_to_lt(datapath, reshape=False), cross_val=.2, header=False, pca=0)
-data.self_standardize()
+data = CData(mnist_to_lt(datapath, fold=False), cross_val=.2, header=False, standardize=True)
 
 
 def time_csxnet():

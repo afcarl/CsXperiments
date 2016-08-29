@@ -89,8 +89,7 @@ def pull_reddit_data2(path):
         raw += line
     print("We have {} sentences!".format(len(lines)))
 
-    data = Sequence(raw)
-    data.embed(5)
+    data = Sequence(raw, embeddim=5)
     return data
 
 
@@ -98,7 +97,7 @@ def main():
     data = pull_reddit_data2(datapath)
     net = getrnn(data)
     print("Teaching network...")
-    X, y = data.table()
+    X, y = data.table("learning")
     net.fit(X, y)
 
 if __name__ == '__main__':

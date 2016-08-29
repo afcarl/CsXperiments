@@ -17,6 +17,7 @@ def extractinfo(encoding):
     chain = ""
     for flpath in txts:
         with open(flpath, encoding=encoding) as fl:
+            # noinspection PyBroadException
             try:
                 chain += fl.read()
             except:

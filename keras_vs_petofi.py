@@ -3,7 +3,7 @@ from keras.layers import LSTM, Dense
 from keras.optimizers import *
 
 from csxdata import roots, log
-from csxdata.frames import MassiveSequence
+from csxdata.frames import MassiveSequence, Sequence
 from csxdata.utilities.helpers import speak_to_me
 
 
@@ -19,14 +19,17 @@ PRETRAIN_LR = 0.001
 FINETUNE = Adagrad
 FINETUNE_LR = 0.01
 
+DATASET = roots["seq"] + "/homo_sapiens/chr1.fa"
+# DATASET = roots["csvs"] + "reddit.csv"
+# DATASET = roots["txt"] + "books.txt"
+# DATASET = roots["txt"] + "petofi.txt"
+CODING = "utf-8"
 
-def pull_data(crossval):
-    return MassiveSequence(
-        roots["txt"] + "books.txt",
-        embeddim=None,
-        cross_val=crossval,
-        timestep=TIMESTEP,
-        n_gram=NGRAM)
+
+def pull_data(dframe):
+    data = dframe(DATASET, embeddim=None, cross_val=CROSSVAL, timestep=TIMESTEP, n_gram=NGRAM, coding=CODING)
+    print("Pulled data with N = {}!".format(data.N))
+    return data
 
 
 def get_net(inshape, outputs):
@@ -41,8 +44,8 @@ def get_net(inshape, outputs):
 def xperiment():
     log(" ----- Experiment: Keras VS Petőfi -----")
 
-    def create_network_and_data(crossval=0.0):
-        data = pull_data(crossval=crossval)
+    def create_network_and_data():
+        data = pull_data(dframe=Sequence)
         inshape, outputs = data.neurons_required
 
         network = get_net(inshape, outputs)
@@ -85,14 +88,14 @@ def xperiment():
         print(smpl)
         return smpl
 
-    model, petofi = create_network_and_data(crossval=CROSSVAL)
+    model, petofi = create_network_and_data()
 
     X, y = petofi.table("learning")
     val = petofi.table("testing")
     spoken = [sample()]
 
-    pretrain_decade(20)
-    finetune_decade(50)
+    pretrain_decade(5)
+    finetune_decade(10)
 
     print()
     print("-"*50)
@@ -106,8 +109,8 @@ def xperiment():
 def generators():
     log(" ----- Experiment: Keras VS Petőfi -----")
 
-    def create_network_and_data(crossval=0.0):
-        data = pull_data(crossval=crossval)
+    def create_network_and_data():
+        data = pull_data(dframe=MassiveSequence)
         inshape, outputs = data.neurons_required
 
         network = get_net(inshape, outputs)
@@ -119,7 +122,7 @@ def generators():
         unbroken = True
         for decade in range(1, century+1):
             try:
-                model.fit_generator(the_generator, samples_per_epoch=100000, nb_epoch=10)
+                model.fit_generator(the_generator, samples_per_epoch=petofi.N, nb_epoch=10)
             except KeyboardInterrupt:
                 unbroken = False
             spoken.append("RMSprop pretrain epoch {}: {}".format(decade * 10, speak_to_me(model, petofi)))
@@ -134,7 +137,7 @@ def generators():
         unbroken = True
         for decade in range(1, century+1):
             try:
-                model.fit_generator(the_generator, samples_per_epoch=100000, nb_epoch=10)
+                model.fit_generator(the_generator, samples_per_epoch=petofi.N, nb_epoch=10)
             except KeyboardInterrupt:
                 unbroken = False
             spoken.append("SGD finetune epoch {}: {}".format(10 * decade, speak_to_me(model, petofi)))
@@ -150,13 +153,13 @@ def generators():
         print(smpl)
         return smpl
 
-    model, petofi = create_network_and_data(crossval=5000)
+    model, petofi = create_network_and_data()
 
     the_generator = petofi.batchgen(BSIZE)
     spoken = [sample()]
 
-    pretrain_century(66)
-    finetune_century(33)
+    pretrain_century(10)
+    finetune_century(5)
 
     print()
     print("-"*50)
