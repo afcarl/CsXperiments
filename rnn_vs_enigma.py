@@ -10,6 +10,7 @@ and simultaneously traning another network to predict Y based on previous elemen
 would lead to victory
 
 """
+
 import random
 
 import numpy as np
