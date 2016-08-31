@@ -14,14 +14,17 @@ would lead to victory
 import random
 
 import numpy as np
-from csxdata.utilities.features import OneHot
-from enigma import Machine, alphabet
-from keras.layers import Dense, LSTM, Flatten
+
+from keras.layers import Dense, Flatten, SimpleRNN
 from keras.models import Sequential
 from keras.optimizers import SGD
 
+from csxdata.utilities.features import OneHot
+from CsXperiments.enigma import Machine, alphabet
+
+
 TIMESTEP = 1
-BSIZE = len(alphabet) * 2
+BSIZE = 100
 INSHP = [TIMESTEP, len(alphabet)]
 OUTSHP = len(alphabet)
 
@@ -41,13 +44,16 @@ def get_machine():
 
 def build_rnn():
     model = Sequential([
-        LSTM(input_shape=INSHP, output_dim=300, return_sequences=True),
-        LSTM(input_shape=INSHP, output_dim=300, return_sequences=True),
-        LSTM(input_shape=INSHP, output_dim=300, return_sequences=True),
-        LSTM(input_shape=INSHP, output_dim=300),
+        SimpleRNN(input_shape=INSHP, output_dim=50, return_sequences=True),
+        SimpleRNN(output_dim=50, return_sequences=True),
+        SimpleRNN(output_dim=50, return_sequences=True),
+        SimpleRNN(output_dim=50, return_sequences=True),
+        SimpleRNN(output_dim=50, return_sequences=True),
+        SimpleRNN(output_dim=50, return_sequences=True),
+        SimpleRNN(output_dim=50),
         Dense(output_dim=OUTSHP, activation="softmax")
     ])
-    model.compile(optimizer=SGD(lr=0.01, momentum=0.8, nesterov=1),
+    model.compile(optimizer=SGD(0.01, momentum=0.9, nesterov=True),
                   loss="categorical_crossentropy", metrics=["acc"])
     return model
 
@@ -108,7 +114,7 @@ def lstm_xperiment():
     datastream = enigma_generator(enigma, TIMESTEP, bsize=BSIZE)
     validation = validation_data(enigma, TIMESTEP, bsize=1000)
 
-    turing.fit_generator(datastream, samples_per_epoch=BSIZE*100, nb_epoch=10, validation_data=validation)
+    turing.fit_generator(datastream, samples_per_epoch=BSIZE*1000, nb_epoch=100, validation_data=validation)
 
     return turing
 
@@ -122,4 +128,4 @@ def fcnn_xperiment():
 
 
 if __name__ == '__main__':
-    fcnn_xperiment()
+    lstm_xperiment()
