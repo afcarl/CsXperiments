@@ -1,24 +1,47 @@
 import numpy as np
-from keras.layers import Dense, Highway
 
-from keras.models import Sequential as Network
-
-from csxdata import RData
+from keras.layers import Dense
+from keras.models import Sequential
 from keras.optimizers import SGD
+from keras.regularizers import WeightRegularizer
 
-X = np.random.uniform(-360.0, 360.0, size=(100000, 1))
-y = np.sin(X)
 
-data = RData((X, y), cross_val=0.1, indeps_n=1, header=None)
-data.transformation = "std"
+def batch_generator(m, N=None):
+    """
 
-net = Network([
-    Dense(300, activation="tanh", input_dim=data.neurons_required[0]),
-    Dense(data.neurons_required[1], activation="tanh")
+    :param m: batch size
+    :param N: overall number of samples to be drawn
+
+    :returns: input m x 1 matrix and target m x 1 matrix
+    """
+
+    n = 0
+
+    while 1:
+        n += m
+        if N:
+            if n > N:
+                m = N - m
+                n = N
+
+        inputs = np.random.uniform(-360., 360., size=(m, 1))
+        targets = np.sin(inputs)
+
+        yield inputs, targets
+        if n == N:
+            break
+
+net = Sequential([
+    Dense(120, activation="tanh", input_dim=1, W_regularizer=WeightRegularizer(l2=3.0)),
+    Dense(120, activation="tanh", W_regularizer=WeightRegularizer(l2=3.0)),
+    Dense(120, activation="tanh", W_regularizer=WeightRegularizer(l2=3.0)),
+    Dense(60, activation="tanh", W_regularizer=WeightRegularizer(l2=3.0)),
+    Dense(30, activation="tanh", W_regularizer=WeightRegularizer(l2=3.0)),
+    Dense(1, activation="linear")
 ])
-net.compile(SGD(lr=0.001, momentum=0.9), loss="mse")
-
-net.fit(X, y, batch_size=20, validation_split=0.1)
+net.compile(SGD(lr=0.001), loss="mse")
+net.fit_generator(generator=batch_generator(100), samples_per_epoch=100000, nb_epoch=100,
+                  validation_data=batch_generator(50), nb_val_samples=1000)
 
 test = np.arange(0, 361, 45, dtype=float)[:, None]
 preds = net.predict(test, verbose=0)
