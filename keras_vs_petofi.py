@@ -4,8 +4,7 @@ from keras.optimizers import *
 
 from csxdata import roots, log
 from csxdata.frames import MassiveSequence, Sequence
-from csxdata.utilities.helpers import speak_to_me
-
+from csxdata.utilities.helpers import keras_speak
 
 # params:
 NGRAM = 1
@@ -16,12 +15,12 @@ CROSSVAL = 0.0
 BSIZE = 50
 PRETRAIN = RMSprop
 PRETRAIN_LR = 0.001
-FINETUNE = Adagrad
+FINETUNE = SGD(momentum=0.5, nesterov=True)
 FINETUNE_LR = 0.01
 
-DATASET = roots["seq"] + "/homo_sapiens/chr1.fa"
+# DATASET = roots["seq"] + "/homo_sapiens/chr1.fa"
 # DATASET = roots["csvs"] + "reddit.csv"
-# DATASET = roots["txt"] + "books.txt"
+DATASET = roots["txt"] + "books.txt"
 # DATASET = roots["txt"] + "petofi.txt"
 CODING = "utf-8"
 
@@ -60,7 +59,7 @@ def xperiment():
                 model.fit(X, y, nb_epoch=10, validation_data=val)
             except KeyboardInterrupt:
                 unbroken = False
-            spoken.append("RMSprop pretrain epoch {}: {}".format(decade * 10, speak_to_me(model, petofi)))
+            spoken.append("RMSprop pretrain epoch {}: {}".format(decade * 10, keras_speak(model, petofi)))
             print(spoken[-1])
             log(spoken[-1])
             if not unbroken:
@@ -125,7 +124,7 @@ def generators():
                 model.fit_generator(the_generator, samples_per_epoch=petofi.N, nb_epoch=10)
             except KeyboardInterrupt:
                 unbroken = False
-            spoken.append("RMSprop pretrain epoch {}: {}".format(decade * 10, speak_to_me(model, petofi)))
+            spoken.append("RMSprop pretrain epoch {}: {}".format(decade * 10, keras_speak(model, petofi)))
             print(spoken[-1])
             log(spoken[-1])
             if not unbroken:
@@ -133,14 +132,14 @@ def generators():
                 return
 
     def finetune_century(century):
-        model.compile(FINETUNE(lr=FINETUNE_LR), "categorical_crossentropy")
+        model.compile(SGD(lr=FINETUNE_LR, momentum=0.5, nesterov=True), "categorical_crossentropy")
         unbroken = True
         for decade in range(1, century+1):
             try:
-                model.fit_generator(the_generator, samples_per_epoch=petofi.N, nb_epoch=10)
+                model.fit_generator(the_generator, samples_per_epoch=petofi.N, nb_epoch=1)
             except KeyboardInterrupt:
                 unbroken = False
-            spoken.append("SGD finetune epoch {}: {}".format(10 * decade, speak_to_me(model, petofi)))
+            spoken.append("SGD finetune epoch {}: {}".format(10 * decade, keras_speak(model, petofi)))
             print(spoken[-1])
             log(spoken[-1])
             if not unbroken:
@@ -148,7 +147,7 @@ def generators():
                 return
 
     def sample(stochastic=False):
-        smpl = speak_to_me(model, petofi, stochastic, ngrams=SAMPLE_NO_NGRAMS)
+        smpl = keras_speak(model, petofi, stochastic, ngrams=SAMPLE_NO_NGRAMS)
         log(smpl)
         print(smpl)
         return smpl
@@ -158,7 +157,7 @@ def generators():
     the_generator = petofi.batchgen(BSIZE)
     spoken = [sample()]
 
-    pretrain_century(10)
+    # pretrain_century(10)
     finetune_century(5)
 
     print()
