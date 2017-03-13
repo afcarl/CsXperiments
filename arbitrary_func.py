@@ -1,53 +1,66 @@
+import time
+
 import numpy as np
+from matplotlib import pyplot as plt
 
-from keras.layers import Dense
-from keras.models import Sequential
-from keras.optimizers import SGD
-from keras.regularizers import WeightRegularizer
+from brainforge.util import white
+from brainforge.costs import cost_fns
+from brainforge.ops.activations import Tanh
 
 
-def batch_generator(m, N=None):
-    """
+def get_data():
+    raw = np.linspace(-360, 360, num=100)[:, None]
+    inpt = raw - raw.max()
+    inpt /= (raw.max() - raw.min())
+    trgt = np.sin(raw)
+    return inpt, trgt
 
-    :param m: batch size
-    :param N: overall number of samples to be drawn
+Wh = white(2, 10)
+bh = np.zeros((10,))
 
-    :returns: input m x 1 matrix and target m x 1 matrix
-    """
+Wo = white(10, 1)
+bo = np.zeros((1,))
 
-    n = 0
+tanh = Tanh()
+mse = cost_fns["mse"](None)
+step = 1
+costs = []
 
-    while 1:
-        n += m
-        if N:
-            if n > N:
-                m = N - m
-                n = N
+E = 20
+lE = len(str(E))
+for epoch in range(1, E+1):
+    h = np.zeros((step, 10))
+    o = np.zeros((step, 1))
+    do = np.copy(o)
 
-        inputs = np.random.uniform(-360., 360., size=(m, 1))
-        targets = np.sin(inputs)
+    Xs, Ys = get_data()
+    print("Epoch {:>{w}}/{}".format(epoch, E, w=lE))
+    for bno, (X, Y) in enumerate(((Xs[start:start+step], Ys[start:start+step])
+                                 for start in range(0, len(Xs), step)), start=1):
+        Z = np.concatenate((X, o), axis=1)
+        h = tanh(Z @ Wh + bh)
+        o = tanh(h @ Wo + bo)
 
-        yield inputs, targets
-        if n == N:
-            break
+        costs.append(mse(o, Y))
+        do += (mse.derivative(o, Y) * tanh.derivative(o))
+        dh = tanh.derivative(h) * do.dot(Wo.T)
+        dZ = dh.dot(Wh.T)
+        do = dZ[:, -1:]
 
-net = Sequential([
-    Dense(120, activation="tanh", input_dim=1, W_regularizer=WeightRegularizer(l2=3.0)),
-    Dense(120, activation="tanh", W_regularizer=WeightRegularizer(l2=3.0)),
-    Dense(120, activation="tanh", W_regularizer=WeightRegularizer(l2=3.0)),
-    Dense(60, activation="tanh", W_regularizer=WeightRegularizer(l2=3.0)),
-    Dense(30, activation="tanh", W_regularizer=WeightRegularizer(l2=3.0)),
-    Dense(1, activation="linear")
-])
-net.compile(SGD(lr=0.001), loss="mse")
-net.fit_generator(generator=batch_generator(100), samples_per_epoch=100000, nb_epoch=100,
-                  validation_data=batch_generator(50), nb_val_samples=1000)
+        Wo -= (h.T @ do)
+        bo -= do.sum(axis=0)
+        Wh -= (X.T @ dh)
+        bh -= dh.sum(axis=0)
 
-test = np.arange(0, 361, 45, dtype=float)[:, None]
-preds = net.predict(test, verbose=0)
-preds = np.round(preds, 4)
-real = np.sin(test)
-real = np.round(real, 4)
+        print("\rCost @ {:>4}: {:>6.3f}".format(bno, np.mean(costs)), end="")
+        time.sleep(0.01)
 
-for tx, ptx, ty in zip(test.ravel(), preds.ravel(), real.ravel()):
-    print("sin({}) = {} (real: {})".format(tx, ptx, ty))
+    print()
+
+costs = np.array(costs)
+axX = np.arange(1, len(costs)+1)
+
+plt.title("Run dynamics")
+plt.plot(axX, costs, "b-")
+plt.plot(axX, costs, "ro")
+plt.show()
