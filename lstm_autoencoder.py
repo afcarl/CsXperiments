@@ -1,38 +1,48 @@
-from csxdata import MassiveSequence
-from csxdata import roots
-from csxdata.utilities.helpers import speak_to_me
-from keras.layers import LSTM, Dense
-from keras.models import Sequential
+import numpy as np
+
+from keras.models import Model
+from keras.layers import Input, LSTM, Dense, TimeDistributed
+from keras.regularizers import l2
 
 
-petofi = MassiveSequence(roots["txt"] + "petofi.txt", cross_val=0.2, timestep=10)
+def build_encoder_part(inpt, layers):
+    lstm = LSTM(layers["hidden1"], return_sequences=True)(inpt)
+    dense = TimeDistributed(
+        Dense(layers["hidden2"], activation="relu", kernel_regularizer=l2(0.01))
+    )(lstm)
+    encoder = Model(inputs=inpt, outputs=dense)
+    return encoder
 
 
-def get_lstm():
-    inshape, outputs = petofi.neurons_required
-    model = Sequential([
-        LSTM(input_shape=inshape, output_dim=120),
-        Dense(output_dim=outputs, activation="softmax")
-    ])
-    model.compile(optimizer="rmsprop", loss="categorical_crossentropy")
-    return model
+def build_decoder_part(encoder, layers):
+    inpt_ = Input(batch_shape=encoder.output_shape)
+    h1 = TimeDistributed(
+        Dense(layers["hidden2"], activation="relu", kernel_regularizer=l2(0.01))
+    )(inpt_)
+    lstm = LSTM(layers["hidden1"], return_sequences=True)(h1)
+    decoder_out = Dense(layers["input"])(lstm)
+    decoder = Model(inputs=inpt_, outputs=decoder_out)
+    return decoder
 
 
-def xperimet():
-    X, y = petofi.table("learning")
-    valdat = petofi.table("testing")
-    model = get_lstm()
-    model.fit(X, y, validation_data=valdat)
+def assemble_autoencoder(sequence_length, layers):
+    inpt = Input((sequence_length, layers["input"]))
+    encoder = build_encoder_part(inpt, layers)
+    decoder = build_decoder_part(encoder, layers)
+    aetensor = decoder(inpt)
+    aetensor = encoder(aetensor)
+    autoencoder = Model(inpt, aetensor)
+    autoencoder.compile(loss="mse", optimizer="adam")
+    return autoencoder, encoder
 
-    print(speak_to_me(model, dat=petofi))
 
+N = 1000
+T = 20
+D = 32
 
-def batcher():
-    generate = petofi.batchgen(10000)
-    model = get_lstm()
-    model.fit_generator(generate, samples_per_epoch=10000, nb_epoch=10)
+X = np.random.randn(N, T, D)
 
-    print(speak_to_me(model, dat=petofi))
+aenc, enc = assemble_autoencoder(T, {"input": D, "hidden1": 20, "hidden2": 10})
+aenc.fit(X, X)
 
-if __name__ == '__main__':
-    batcher()
+encodedX = enc.predict(X)
