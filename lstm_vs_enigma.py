@@ -19,7 +19,7 @@ from keras.layers import Dense, Flatten, SimpleRNN
 from keras.models import Sequential
 from keras.optimizers import SGD
 
-from csxdata.utilities.features import OneHot
+from csxdata.features.embedding import OneHot
 from CsXperiments.enigma import Machine, alphabet
 
 

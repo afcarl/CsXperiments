@@ -1,10 +1,10 @@
 from keras.models import Sequential
-from keras.layers import LSTM, Dense, Dropout
+from keras.layers import LSTM, Dense
 from keras.optimizers import *
 
 from csxdata import roots, log
-from csxdata.frames import MassiveSequence, Sequence
-from csxdata.utilities.helpers import keras_speak
+from csxdata import MassiveSequence, Sequence
+from csxdata.utilities.helper import keras_speak
 
 # params:
 NGRAM = 1
@@ -21,8 +21,8 @@ FINETUNE_LR = 0.01
 # DATASET = roots["seq"] + "/homo_sapiens/chr1.fa"
 # DATASET = roots["csvs"] + "reddit.csv"
 # DATASET = roots["txt"] + "books.txt"
-# DATASET = roots["txt"] + "petofi.txt"
-DATASET = roots["txt"] + "scripts.txt"
+DATASET = roots["txt"] + "petofi.txt"
+# DATASET = roots["txt"] + "scripts.txt"
 CODING = "utf-8"
 
 
