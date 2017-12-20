@@ -1,10 +1,8 @@
 import os
-import sys
 
-from csxdata import roots
-from csxdata.utilities.misc import dehungarize
+from csxdata.parser.reparse import dehungarize
 
-root = "E:/PyCharm/" if sys.platform == "win32" else "/data/Prog/PycharmProjects"
+root = os.path.expanduser("~/Prog/PyCharm/")
 
 pyflz = []
 for path, dirs, flz in os.walk(root):
@@ -23,11 +21,12 @@ for pyfl in pyflz:
     else:
         bigpychain += "##ENDFILE##\n"
     finally:
+        print("Dehungarizing...")
         bigpychain = dehungarize(bigpychain)
 
 nlines = bigpychain.count("\n") - len(pyflz)
 print("Concatenated 'em. Found {} characters in {} lines!".format(len(bigpychain), nlines))
-print("Writing to roots[txt]!")
+print("Writing to [txt]!")
 
-with open(roots["txt"] + "scripts.txt", "w", encoding="utf8") as outfl:
+with open(os.path.expanduser("~/Prog/data/txt/scripts.txt"), "w", encoding="utf8") as outfl:
     outfl.write(bigpychain)
